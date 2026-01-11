@@ -11,6 +11,10 @@ from tqdm import tqdm
 
 from wigner.utils import trigsimp
 
+import atexit
+from pathlib import Path
+import pickle
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +64,7 @@ def _gell_mann_basis(d: int) -> list[sym.ImmutableSparseMatrix]:
 
 
 class Su2Group:
+    _cache_dir: Optional[Path] = Path(__file__).parent / ".cache"
     _cache: Optional[dict[int, Su2Group]] = None
     _cached_attrs: list[str] = [
         "_jx",
@@ -119,9 +124,34 @@ class Su2Group:
     @classmethod
     def _get_cache(cls) -> dict[int, Su2Group]:
         if cls._cache is None:
-            cls._cache = {}
+
+            cached_list: list[dict[str, Any]] = []
+
+            if cls._cache_dir is not None:
+                try:
+                    with (cls._cache_dir / f"{cls.__name__}.pkl").open("rb") as f:
+                        cached_list = pickle.load(f)
+                except FileNotFoundError:
+                    pass
+
+            cls._cache = {
+                cached_obj["dim"]: Su2Group._new(**cached_obj)
+                for cached_obj in cached_list
+            }
 
         return cls._cache
+
+    @classmethod
+    def _dump_cache(cls) -> None:
+        if cls._cache is not None:
+            cache = cls._get_cache()
+            cached_list = [cache[dim]._get_obj() for dim in sorted(cache)]
+
+            if cls._cache_dir is not None:
+                cls._cache_dir.mkdir(exist_ok=True)
+
+                with (cls._cache_dir / f"{cls.__name__}.pkl").open("wb") as f:
+                    pickle.dump(cached_list, f)
 
     def __new__(cls, dim: int) -> Su2Group:
         if not isinstance(dim, int) or dim <= 0:
@@ -263,7 +293,7 @@ class Su2Group:
 
         def _comp(xc0: sym.Expr, xcs: list[sym.Expr], gens: list[sym.Expr]) -> sym.Expr:
             return sum([xc * gen for xc, gen in zip(xcs, gens)], start=xc0)
-        
+
         x = sym.expand(x)
 
         theta, phi = sym.symbols("theta, phi", real=True)
@@ -346,7 +376,6 @@ class Su2Group:
                 docstring_limit=None,
             )
 
-
         op = np.array(op, dtype=complex)
         op_triu = np.moveaxis(op[..., rdx, cdx], -1, 0)
 
@@ -354,3 +383,6 @@ class Su2Group:
 
         result = np.asarray(self._wg_transform(theta, phi, *op_triu))
         return result if result.shape else result[()]
+
+
+atexit.register(Su2Group._dump_cache)

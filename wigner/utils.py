@@ -61,7 +61,7 @@ def trigsimp(x: sym.Expr) -> sym.Expr:
 
         if isinstance(x, sym.Mul):
             return sum(sin_cos_pow(y) for y in x.args)
-        
+
         if isinstance(x, sym.Add):
             return max(sin_cos_pow(y) for y in x.args)
 

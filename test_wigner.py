@@ -7,6 +7,8 @@ import sympy as sym
 
 from wigner import Su2Group
 
+Su2Group._cache_dir = None
+
 logger = logging.getLogger(__name__)
 
 DIMS = [2, 3, 4, 5]
