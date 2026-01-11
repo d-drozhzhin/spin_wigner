@@ -81,7 +81,7 @@ $$\int_0^{\pi} W(\theta, \phi) ~ \sin\theta d\theta = \frac{\pi}{2j{+}1} \sum_{l
 
 $$K_n(\tilde{\theta}) = \frac{4}{\pi} \sum_{\lambda=0}^{n} \frac{\cos(2\lambda ~ \tilde{\theta})}{1-4\lambda^2} - \frac{2}{\pi} = \frac{2}{\pi} \sum_{\lambda=-n}^{n} \frac{e^{\iota 2\lambda\tilde{\theta}}}{1-4\lambda^2}$$
 
-$$\lim_{n\to\infty} K_n(\tilde{\theta}) = \sin\tilde{\theta}$$
+$$\lim_{n\to\infty} K_n(\tilde{\theta}) = \left| \sin\tilde{\theta} \right|$$
 
 ### Overall tomography
 
