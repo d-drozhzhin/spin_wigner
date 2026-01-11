@@ -1,0 +1,12 @@
+pytest
+numpy
+scipy
+sympy
+
+ipykernel
+matplotlib
+ipympl
+plotly
+anywidget
+tqdm
+nbformat
