@@ -19,48 +19,47 @@ import pickle
 logger = logging.getLogger(__name__)
 
 
-def _gell_mann_matrix(d: int, a: int, b: int) -> sym.ImmutableSparseMatrix:
+def _gell_mann_dict(a: int, b: int) -> dict[tuple[int, int], sym.Expr]:
     gell_mann_dict: dict[tuple[int, int], sym.Expr] = {}
 
     if a == b:
-        if a == 0:
-            for n in range(d):
-                gell_mann_dict[n, n] = 1 / sym.sqrt(d)
-        else:
-            for n in range(a):
-                gell_mann_dict[n, n] = 1 / sym.sqrt(a * (a + 1))
-            gell_mann_dict[a, a] = -sym.sqrt(sym.Rational(a, a + 1))
+        for n in range(a):
+            gell_mann_dict[n, n] = 1
+        gell_mann_dict[a, a] = -a
     else:
         if a < b:
             _ab = 1
         else:
             _ab = sym.I
 
-        gell_mann_dict[a, b] = _ab / sym.sqrt(2)
-        gell_mann_dict[b, a] = sym.conjugate(_ab) / sym.sqrt(2)
+        gell_mann_dict[a, b] = _ab
+        gell_mann_dict[b, a] = sym.conjugate(_ab)
 
-    return sym.ImmutableSparseMatrix(d, d, gell_mann_dict)
+    return gell_mann_dict
 
 
 def _gell_mann_x(d: int) -> list[sym.ImmutableSparseMatrix]:
-    return [_gell_mann_matrix(d, a, b) for b in range(d) for a in range(b)]
+    return [
+        sym.ImmutableSparseMatrix(d, d, _gell_mann_dict(a, b))
+        for b in range(d)
+        for a in range(b)
+    ]
 
 
 def _gell_mann_y(d: int) -> list[sym.ImmutableSparseMatrix]:
-    return [_gell_mann_matrix(d, a, b) for a in range(d) for b in range(a)]
+    return [
+        sym.ImmutableSparseMatrix(d, d, _gell_mann_dict(a, b))
+        for a in range(d)
+        for b in range(a)
+    ]
 
 
 def _gell_mann_z(d: int) -> list[sym.ImmutableSparseMatrix]:
-    return [_gell_mann_matrix(d, a, a) for a in range(1, d)]
+    return [sym.ImmutableSparseMatrix(d, d, _gell_mann_dict(a, a)) for a in range(1, d)]
 
 
 def _gell_mann_basis(d: int) -> list[sym.ImmutableSparseMatrix]:
-    return (
-        [_gell_mann_matrix(d, 0, 0)]
-        + _gell_mann_z(d)
-        + _gell_mann_x(d)
-        + _gell_mann_y(d)
-    )
+    return _gell_mann_z(d) + _gell_mann_x(d) + _gell_mann_y(d)
 
 
 class Su2Group:
@@ -253,30 +252,19 @@ class Su2Group:
 
     def _wigner_pure(self, psi: sym.NDimArray | sym.MatrixBase) -> sym.Expr:
         d = self.dim
-
-        assert isinstance(psi, (sym.NDimArray, sym.MatrixBase))
-        if isinstance(psi, sym.NDimArray):
-            assert psi.shape == (d,), f"{psi.shape}"
-        else:
-            assert psi.shape in [(d, 1), (1, d)], f"{psi.shape}"
-
         psi = sym.ImmutableDenseMatrix(d, 1, psi).normalized()
 
-        # W(theta, phi) = <psi| D(theta, phi) П D^+(theta, phi) |psi>
         return (psi.H @ self.kernel @ psi)[0]
 
     def _wigner_op(self, op: sym.NDimArray | sym.MatrixBase) -> sym.Expr:
-        d = self.dim
-
-        assert isinstance(op, (sym.NDimArray, sym.MatrixBase))
-        assert op.shape == (d, d), f"{op.shape}"
-
         op = sym.ImmutableDenseMatrix(op)
 
-        return sum(
-            ein_val * sum(self._wigner_pure(ein_vec) for ein_vec in ein_vecs)
-            for ein_val, _, ein_vecs in op.eigenvects()
-            if not ein_val.is_zero
+        return trigsimp(
+            sum(
+                ein_val * sum(self._wigner_pure(ein_vec) for ein_vec in ein_vecs)
+                for ein_val, _, ein_vecs in op.eigenvects()
+                if not ein_val.is_zero
+            )
         )
 
     def _wg_simp(self, x: sym.Expr) -> sym.Expr:
@@ -310,12 +298,11 @@ class Su2Group:
     @property
     def wigner_basis(self) -> list[sym.Expr]:
         if not hasattr(self, "_wg_basis"):
-            _wg_basis = [1 / sym.sqrt(self.dim)]
+            _wg_basis = []
             for gm in tqdm(
-                self.gell_mann_basis[1:], desc=f"Wigner basis for Su2Group({self.dim})"
+                self.gell_mann_basis, desc=f"Wigner basis for Su2Group({self.dim})"
             ):
-                _wg_gm = trigsimp(self._wigner_op(gm))
-                _wg_basis += [_wg_gm]
+                _wg_basis += [self._wg_simp(self._wigner_op(gm))]
 
             self._wg_basis = _wg_basis
 
@@ -340,12 +327,11 @@ class Su2Group:
             assert _op.is_hermitian
 
             _op_coeff = [
-                sym.simplify(sym.trace(_op @ gm)) for gm in self.gell_mann_basis
+                sym.simplify(sym.trace(_op @ gm) / sym.trace(gm**2))
+                for gm in self.gell_mann_basis
             ]
-            for c in _op_coeff:
-                assert c.is_real, f"{c}"
 
-            self._wg_expr = self._wg_simp(
+            self._wg_expr = sym.simplify(sym.trace(_op) / self.dim) + self._wg_simp(
                 sym.expand(sum((o * w) for o, w in zip(_op_coeff, self.wigner_basis)))
             )
 
@@ -355,8 +341,8 @@ class Su2Group:
         self,
         theta: np.typing.ArrayLike,
         phi: np.typing.ArrayLike,
-        op: np.ndarray[tuple[int, int], np.dtype[np.complexfloating]],
-    ) -> np.typing.ArrayLike:
+        op: np.typing.ArrayLike,
+    ) -> np.ndarray | np.floating:
         d = self.dim
         rdx, cdx = np.triu_indices(d)
 

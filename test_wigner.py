@@ -23,13 +23,16 @@ def test_gell_mann(dim: int):
     assert 2 * group.j + 1 == dim
 
     su2_basis = group.gell_mann_basis
-    assert len(su2_basis) == dim**2
+    assert len(su2_basis) == dim**2 - 1
 
-    for i, j in product(range(dim**2), repeat=2):
+    for i, j in product(range(dim**2 - 1), repeat=2):
         su2_i = su2_basis[i]
         su2_j = su2_basis[j]
 
-        assert sym.trace(su2_i @ su2_j) == int(i == j)
+        if i != j:
+            assert sym.trace(su2_i @ su2_j).is_zero
+        else:
+            assert sym.trace(su2_i @ su2_j).is_positive
 
 
 @pytest.mark.parametrize("dim", DIMS)
@@ -119,6 +122,8 @@ def test_wigner_basis(dim: int):
     group = Su2Group(dim)
 
     theta, phi = sym.symbols("theta, phi", real=True)
+
+    assert len(group.wigner_basis) == len(group.gell_mann_basis)
 
     for wg in group.wigner_basis:
         logger.debug("%s", wg)
