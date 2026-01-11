@@ -79,8 +79,11 @@ def test_wigner_displacement(dim: int):
 def test_wigner_kernel(dim: int):
     group = Su2Group(dim)
 
-    logger.debug("%s", group.disp)
-    logger.debug("%s", group.kernel)
+    assert sym.trace(group.parity) == 1
+    assert sym.trace(group.kernel) == 1
+
+    assert sym.simplify(sym.expand(sym.trace(group.parity**2))) == dim
+    assert sym.simplify(sym.expand(sym.trace(group.kernel**2))) == dim
 
 
 @pytest.mark.parametrize("dim", DIMS)
