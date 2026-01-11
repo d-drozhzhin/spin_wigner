@@ -376,9 +376,7 @@ class Su2Group:
                 docstring_limit=None,
             )
 
-        op = np.array(op, dtype=complex)
         op_triu = np.moveaxis(op[..., rdx, cdx], -1, 0)
-
         theta, phi, *op_triu = np.broadcast_arrays(theta, phi, *op_triu)
 
         result = np.asarray(self._wg_transform(theta, phi, *op_triu))
