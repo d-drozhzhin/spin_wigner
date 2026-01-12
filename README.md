@@ -10,9 +10,9 @@ pip install -r requirements.txt
 
 Jupyther notebooks are used to demonstrate Wigner function for spin systems:
 
-- `draw_2d_wigner.ipynb`/`draw_3d_wigner.ipynb` – Plot Wigner function in 2D or 3D for a given state `rho` of a qudit with dimension `dim`;
-- `expr_wigner.ipynb` – Print mathematical expressions for Wigner transformation of a qudit with dimension `dim`;
-- `collect_wigner_cache.py` – Evaluate expressions for many `dim` values and stores in cache file `wigner/.cache/Su2Group.pkl`.
+- `draw_2d_wigner.ipynb`/`draw_3d_wigner.ipynb` – Plot Wigner function in 2D or 3D for a given state `rho` of a qudit with dimension `dim`.
+- `expr_wigner.ipynb` – Print mathematical expressions for Wigner transformation of a qudit with dimension `dim`.
+- `collect_wigner_cache.py [limit]` – Evaluate expressions for many `dim` values and stores in cache file `wigner/.cache/Su2Group.pkl`. Optionaly, you can pass integer value and the process will stop, when all `dim <= limit` are evaluated. Otherwise, process will run indefinitely.
 
 `dim` value could be set to any integer ≥2.
 
