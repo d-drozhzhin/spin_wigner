@@ -1,3 +1,21 @@
+# Python code
+
+Run the code to initiate virtual python environment and install dependencies:
+
+```shell
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Jupyther notebooks are used to demonstrate Wigner function for spin systems:
+
+- `draw_2d_wigner.ipynb`/`draw_3d_wigner.ipynb` – Plot Wigner function in 2D or 3D for a given state `rho` of a qudit with dimension `dim`;
+- `expr_wigner.ipynb` – Print mathematical expressions for Wigner transformation of a qudit with dimension `dim`;
+- `collect_wigner_cache.py` – Evaluate expressions for many `dim` values and stores in cache file `wigner/.cache/Su2Group.pkl`.
+
+`dim` value could be set to any integer ≥2.
+
 # Wigner transformation for $SU(2)$ group
 
 Implementation is based on papers [Champion, Wang, Parker, & Blok](https://journals.aps.org/prx/abstract/10.1103/vbh4-lysv) and [Brif & Mann](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.59.971).
